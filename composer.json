@@ -14,7 +14,7 @@
             "type": "composer",
             "url": "https://packages.lafourchette.com"
         }
-    ]
+    ],
     "require": {
         "php": ">=5.3",
         "lafourchette/swarrot": "dev-master@dev",
