@@ -10,8 +10,13 @@
     </parameters>
 
     <services>
-        <service id="swarrot.factory.pecl" class="%swarrot.factory.pecl.class%" />
-        <service id="swarrot.factory.amqp_lib" class="%swarrot.factory.amqp_lib.class%" />
+        <service id="swarrot.factory.pecl" class="%swarrot.factory.pecl.class%">
+            <argument type="service" id="swarrot.logger" />
+            <tag name="swarrot.provider_factory" alias="pecl"/>
+        </service>
+        <service id="swarrot.factory.amqp_lib" class="%swarrot.factory.amqp_lib.class%">
+            <tag name="swarrot.provider_factory" alias="amqp_lib"/>
+        </service>
 
         <service id="swarrot.command.base" class="%swarrot.command.base.class%" abstract="true">
             <argument /> <!-- name -->
@@ -30,6 +35,9 @@
             <argument type="service" id="swarrot.factory.default" />
             <argument type="service" id="event_dispatcher" />
             <argument>%swarrot.messages_types%</argument>
+            <argument type="service" id="swarrot.logger" />
         </service>
+
+        <service id="swarrot.logger.null" class="Psr\Log\NullLogger" public="false" />
     </services>
 </container>
