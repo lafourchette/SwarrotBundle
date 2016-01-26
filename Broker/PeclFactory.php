@@ -4,15 +4,29 @@ namespace Swarrot\SwarrotBundle\Broker;
 
 use Swarrot\Broker\MessageProvider\PeclPackageMessageProvider;
 use Swarrot\Broker\MessagePublisher\PeclPackageMessagePublisher;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class PeclFactory implements FactoryInterface
 {
-    protected $connections       = array();
-    protected $channels          = array();
-    protected $messageProviders  = array();
+    protected $logger;
+
+    protected $connections = array();
+    protected $messageProviders = array();
     protected $messagePublishers = array();
-    protected $queues            = array();
-    protected $exchanges         = array();
+    protected $queues = array();
+    protected $exchanges = array();
+    protected $amqpConnections = array();
+
+    /**
+     * __construct.
+     *
+     * @param LoggerInterface $logger
+     */
+    public function __construct(LoggerInterface $logger = null)
+    {
+        $this->logger = $logger ?: new NullLogger();
+    }
 
     /**
      * {@inheritDoc}
@@ -52,14 +66,14 @@ class PeclFactory implements FactoryInterface
 
             $exchange = $this->getExchange($name, $connection);
 
-            $this->messagePublishers[$connection][$name] = new PeclPackageMessagePublisher($exchange);
+            $this->messagePublishers[$connection][$name] = new PeclPackageMessagePublisher($exchange, AMQP_NOPARAM, $this->logger);
         }
 
         return $this->messagePublishers[$connection][$name];
     }
 
     /**
-     * getQueue
+     * getQueue.
      *
      * @param string $name
      * @param string $connection
@@ -85,7 +99,7 @@ class PeclFactory implements FactoryInterface
     }
 
     /**
-     * getExchange
+     * getExchange.
      *
      * @param string $name
      * @param string $connection
@@ -111,7 +125,7 @@ class PeclFactory implements FactoryInterface
     }
 
     /**
-     * getChannel
+     * getChannel.
      *
      * @param string $connection
      *
@@ -121,10 +135,6 @@ class PeclFactory implements FactoryInterface
      */
     protected function getChannel($connection)
     {
-        if (isset($this->channels[$connection])) {
-            return $this->channels[$connection];
-        }
-
         if (!isset($this->connections[$connection])) {
             throw new \InvalidArgumentException(sprintf(
                 'Unknown connection "%s". Available: [%s]',
@@ -133,15 +143,11 @@ class PeclFactory implements FactoryInterface
             ));
         }
 
-        if (!isset($this->channels[$connection])) {
-            $this->channels[$connection] = array();
+        if (!isset($this->amqpConnections[$connection])) {
+            $this->amqpConnections[$connection] = new \AMQPConnection($this->connections[$connection]);
+            $this->amqpConnections[$connection]->connect();
         }
 
-        $conn = new \AMQPConnection($this->connections[$connection]);
-        $conn->connect();
-
-        $this->channels[$connection] = new \AMQPChannel($conn);
-
-        return $this->channels[$connection];
+        return new \AMQPChannel($this->amqpConnections[$connection]);
     }
 }

@@ -5,14 +5,12 @@ namespace Swarrot\SwarrotBundle\DependencyInjection;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
 use Symfony\Component\Config\FileLocator;
-use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\DefinitionDecorator;
 
 /**
- * SwarrotExtension
+ * SwarrotExtension.
  */
 class SwarrotExtension extends Extension
 {
@@ -21,34 +19,19 @@ class SwarrotExtension extends Extension
      */
     public function load(array $configs, ContainerBuilder $container)
     {
-        $processor = new Processor();
-        $configuration = new Configuration();
+        $config = $this->processConfiguration($this->getConfiguration($configs, $container), $configs);
 
-        $config = $processor->processConfiguration($configuration, $configs);
-
-        $loader = new XmlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
+        $loader = new XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('swarrot.xml');
-
-        $id = 'swarrot.factory.'.$config['provider'];
-        if (!$container->has($id)) {
-            throw new \InvalidArgumentException('Unsupported provider');
-        }
-
-        $definition = $container->getDefinition($id);
-
-        foreach ($config['connections'] as $name => $connectionConfig) {
-            $definition->addMethodCall('addConnection', array(
-                $name,
-                $connectionConfig
-            ));
-        }
 
         if (null === $config['default_connection']) {
             reset($config['connections']);
             $config['default_connection'] = key($config['connections']);
         }
 
-        $container->setAlias('swarrot.factory.default', $id);
+        $container->setAlias('swarrot.logger', $config['publisher_logger']);
+
+        $container->setParameter('swarrot.provider_config', array($config['provider'], $config['connections']));
 
         $commands = array();
         foreach ($config['consumers'] as $name => $consumerConfig) {
@@ -75,13 +58,37 @@ class SwarrotExtension extends Extension
 
         $container->setParameter('swarrot.messages_types', $messagesTypes);
 
-        if ($container->getParameter('kernel.debug')) {
+        if ($config['enable_collector']) {
             $loader->load('collector.xml');
         }
     }
 
     /**
-     * buildCommand
+     * {@inheritDoc}
+     */
+    public function getConfiguration(array $configs, ContainerBuilder $container)
+    {
+        return new Configuration($container->getParameter('kernel.debug'));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getXsdValidationBasePath()
+    {
+        return __DIR__.'/../Resources/config/schema';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getNamespace()
+    {
+        return 'http://swarrot.io/schema/dic/swarrot';
+    }
+
+    /**
+     * buildCommand.
      *
      * @param ContainerBuilder $container
      * @param string           $name

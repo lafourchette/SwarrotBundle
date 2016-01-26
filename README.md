@@ -65,6 +65,7 @@ swarrot:
         my_consumer:
             processor: my_consumer.processor.service
             extras:
+                poll_interval: 500000
                 retry_exchange: my_consumer_exchange
                 retry_attempts: 3
                 retry_routing_key_pattern: 'retry_%%attempt%%'
@@ -133,7 +134,25 @@ here is the default order:
 * Ack
 * Retry
 
-All this processors are configurable with some options:
+All this processors are configurable.
+You can add `extras` key on each consumer definition in your `config.yml`
+
+```
+swarrot:
+    ...
+    consumers:
+        my_consumer:
+            processor: my_consumer.processor.service
+            extras:
+                poll_interval: 500000
+                requeue_on_error: 1
+                max_messages: 10
+                retry_exchange: my_consumer_exchange
+                retry_attempts: 3
+                retry_routing_key_pattern: 'retry_%%attempt%%'
+```
+ 
+You can also use options of the commande line:
 
 * **--poll-interval** [default: 500000]: Change the polling interval when no
   message found in broker
@@ -147,6 +166,52 @@ All this processors are configurable with some options:
   (available only if the processor is in the stack)
 * **--no-retry (-R)**: Disable the Retry processor (available only if the processor
   is in the stack)
+
+Default values will be override by your `config.yml` and use of options will override defaut|config values.
+
+## Implementing your own Provider
+If you want to implement your own provider (like Redis). First, you have to implements the `Swarrot\SwarrotBundle\Broker\FactoryInterface`.
+Then, you can register it with along the others services and tag it with `swarrot.provider_factory`. 
+
+```yaml
+services:
+    app.swarrot.custom_provider_factory:
+        class: AppBundle\Provider\CustomFactory
+        tags:
+            - {name: swarrot.provider_factory}
+    app.swarrot.redis_provider_factory:
+        class: AppBundle\Provider\RedisFactory
+        tags:
+            - {name: swarrot.provider_factory, alias: redis}
+```
+
+Now you can tell to swarrot to use it in the `config.yml` file.
+
+```yaml
+swarrot:
+  provider: app.swarrot.custom_provider_factory
+  ...
+```
+
+or with the alias
+
+```yaml
+swarrot:
+  provider: redis
+  ...
+```
+
+## Running your tests without publishing
+If you use Swarrot you may not want to realy publish  messages like in test environment for example. You can use the `BlackholePublisher` to achieve this.
+
+Simply override the `swarrot.publisher.class` parameter in the DIC with the `Swarrot\SwarrotBundle\Broker\PublisherBlackhole` class.
+
+Update `config_test.yml` for example:
+
+```yaml
+parameters:
+    swarrot.publisher.class: Swarrot\SwarrotBundle\Broker\BlackholePublisher
+```
 
 ## License
 
