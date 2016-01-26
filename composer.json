@@ -21,7 +21,7 @@
     ],
     "require": {
         "php": ">=5.3",
-        "lafourchette/swarrot": "dev-master@dev",
+        "lafourchette/swarrot": "~1.5",
         "psr/log": "~1.0",
         "symfony/framework-bundle": "~2.4",
         "symfony/console": "~2.4"
